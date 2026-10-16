@@ -15,9 +15,10 @@ class RenderProfileTests(unittest.TestCase):
     def setUp(self) -> None:
         self.data = load_profile(ROOT / "data" / "profile.json")
 
-    def test_default_config_contains_priority_projects(self) -> None:
-        names = [item["name"] for item in self.data["projects"]]
-        self.assertEqual(names, ["Conversa", "Backend Safety Kit"])
+    def test_default_config_hides_projects_packages_and_future_plans(self) -> None:
+        self.assertEqual(self.data["projects"], [])
+        self.assertEqual(self.data["packages"], [])
+        self.assertEqual(self.data["profile"]["plan"], [])
 
     def test_svg_is_valid_xml_and_has_terminal_accessibility_metadata(self) -> None:
         svg = render_svg(self.data)
@@ -95,25 +96,59 @@ class RenderProfileTests(unittest.TestCase):
         # Keep the original blinking prompt cursor at the end of the animation.
         self.assertIn('values="1;0" calcMode="discrete" dur="1s"', svg)
 
-    def test_svg_includes_interests_projects_learning_and_plan(self) -> None:
+    def test_svg_keeps_intro_interests_and_learning_only(self) -> None:
         svg = render_svg(self.data)
         for expected in (
             "Ürem Sancaktutan",
             "Senior Full Stack Developer",
             "Backend engineering",
-            "Conversa",
-            "Backend Safety Kit",
             "AI-assisted development workflows",
-            "Move Conversa closer to a usable product",
+            "Reusable backend safety infrastructure",
         ):
             self.assertIn(expected, svg)
+        for unwanted in (
+            "Conversa",
+            "Backend Safety Kit",
+            "BackendSafetyKit",
+            "nuget",
+            "NuGet",
+            "featured",
+            ".plan",
+            "Move Conversa closer",
+            "selected projects",
+            "package information",
+            "and plans",
+        ):
+            self.assertNotIn(unwanted.lower(), svg.lower())
         self.assertNotIn("github-snake-remix", svg.lower())
 
-    def test_generated_markdown_links_use_configured_urls(self) -> None:
+    def test_generated_markdown_omits_empty_project_and_package_sections(self) -> None:
         markdown = render_links_markdown(self.data)
-        self.assertIn("https://github.com/codelovingcat/AI-Powered-Real-Time-Conversation-Assistant", markdown)
-        self.assertIn("https://github.com/codelovingcat/Backend-Safety-Kit", markdown)
-        self.assertIn("NuGet listing pending confirmation", markdown)
+        self.assertNotIn("Featured projects", markdown)
+        self.assertNotIn("Package links", markdown)
+        self.assertNotIn("NuGet", markdown)
+        self.assertNotIn("Conversa", markdown)
+        self.assertNotIn("Backend Safety Kit", markdown)
+
+    def test_optional_project_and_package_sections_can_be_enabled_explicitly(self) -> None:
+        data = json.loads(json.dumps(self.data))
+        data["projects"] = [{
+            "name": "Example Project",
+            "description": "A sample app",
+            "url": "https://example.com/project",
+        }]
+        data["packages"] = [{
+            "name": "ExamplePackage",
+            "description": "A sample package",
+            "status": "preview",
+            "source_url": "https://example.com/source",
+            "release_url": None,
+            "package_url": None,
+        }]
+        markdown = render_links_markdown(data)
+        self.assertIn("## Featured projects", markdown)
+        self.assertIn("## Package links", markdown)
+        self.assertIn("https://example.com/project", markdown)
 
     def test_dynamic_text_is_xml_escaped(self) -> None:
         data = json.loads(json.dumps(self.data))
