@@ -40,6 +40,10 @@ def _validate_profile(data: Any) -> dict[str, Any]:
     for field in ("name", "headline", "tagline"):
         if not isinstance(profile.get(field), str) or not profile[field].strip():
             raise ValueError(f"profile.{field} must be a non-empty string.")
+    nuget_url = profile.get("nuget_url")
+    if nuget_url is not None and not _is_http_url(nuget_url):
+        raise ValueError("profile.nuget_url must be an HTTP(S) URL or null.")
+
     for field in ("interests", "learning", "plan"):
         values = profile.get(field, [])
         if not isinstance(values, list) or any(not isinstance(item, str) for item in values):
@@ -264,6 +268,15 @@ def render_links_markdown(data: dict[str, Any]) -> str:
             if not package.get("package_url"):
                 suffix += " · NuGet listing pending confirmation"
             rows.append(f'- **{name}** — {description} · {suffix}')
+
+    nuget_url = data["profile"].get("nuget_url")
+    if nuget_url:
+        rows.extend([
+            "",
+            "## NuGet packages",
+            "",
+            f"Browse my published packages on [my NuGet profile]({nuget_url}).",
+        ])
 
     return "\n".join(rows).rstrip() + "\n"
 
