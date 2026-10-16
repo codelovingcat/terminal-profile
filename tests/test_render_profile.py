@@ -87,6 +87,8 @@ class RenderProfileTests(unittest.TestCase):
         self.assertIn("https://github.com/codelovingcat/AI-Powered-Real-Time-Conversation-Assistant", markdown)
         self.assertIn("https://github.com/codelovingcat/Backend-Safety-Kit", markdown)
         self.assertIn("NuGet listing pending confirmation", markdown)
+        self.assertIn("## NuGet packages", markdown)
+        self.assertIn("Browse my published packages on [my NuGet profile](https://www.nuget.org/profiles/Urem).", markdown)
 
     def test_dynamic_text_is_xml_escaped(self) -> None:
         data = json.loads(json.dumps(self.data))
@@ -94,6 +96,12 @@ class RenderProfileTests(unittest.TestCase):
         svg = render_svg(data)
         ET.fromstring(svg)
         self.assertIn("&lt;Developer&gt; &amp; Tester", svg)
+
+    def test_invalid_nuget_profile_url_is_rejected(self) -> None:
+        data = json.loads(json.dumps(self.data))
+        data["profile"]["nuget_url"] = "javascript:alert(1)"
+        with self.assertRaisesRegex(ValueError, "profile.nuget_url"):
+            render_svg(data)
 
     def test_invalid_project_url_is_rejected(self) -> None:
         data = json.loads(json.dumps(self.data))
