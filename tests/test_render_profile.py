@@ -97,6 +97,11 @@ class RenderProfileTests(unittest.TestCase):
         # Keep the original blinking prompt cursor at the end of the animation.
         self.assertIn('values="1;0" calcMode="discrete" dur="1s"', svg)
 
+    def test_checked_in_svg_matches_the_current_profile_config(self) -> None:
+        generated = render_svg(self.data)
+        checked_in = (ROOT / "assets" / "terminal.svg").read_text(encoding="utf-8")
+        self.assertEqual(checked_in, generated)
+
     def test_svg_shows_intro_interests_and_learning_without_extra_sections(self) -> None:
         svg = render_svg(self.data)
         for expected in (
