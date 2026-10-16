@@ -1,0 +1,65 @@
+name: Generate terminal profile SVG
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "data/profile.json"
+      - "scripts/**"
+      - "tests/**"
+      - "docs/profile-content.md"
+      - ".github/workflows/generate-terminal.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: terminal-profile-svg-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Generate SVG and Markdown links
+        run: python scripts/render_profile.py
+
+  publish:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate SVG and Markdown links
+        run: python scripts/render_profile.py
+
+      - name: Commit generated files when changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/terminal.svg docs/generated-links.md
+          git diff --cached --quiet || {
+            git commit -m "chore: regenerate terminal profile assets"
+            git push
+          }
