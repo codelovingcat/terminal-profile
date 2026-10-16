@@ -12,32 +12,8 @@
       "AI-assisted development workflows",
       "Reusable backend safety infrastructure"
     ],
-    "plan": [
-      "Grow Backend Safety Kit and publish its packages",
-      "Move Conversa closer to a usable product"
-    ],
-    "nuget_url": "https://www.nuget.org/profiles/Urem"
+    "plan": []
   },
-  "projects": [
-    {
-      "name": "Conversa",
-      "description": "AI-powered conversation assistant · .NET 10 / React",
-      "url": "https://github.com/codelovingcat/AI-Powered-Real-Time-Conversation-Assistant"
-    },
-    {
-      "name": "Backend Safety Kit",
-      "description": "ASP.NET Core safety and diagnostics toolkit",
-      "url": "https://github.com/codelovingcat/Backend-Safety-Kit"
-    }
-  ],
-  "packages": [
-    {
-      "name": "BackendSafetyKit.AspNetCore",
-      "description": "ASP.NET Core middleware and service integrations",
-      "status": "preview",
-      "source_url": "https://github.com/codelovingcat/Backend-Safety-Kit",
-      "release_url": "https://github.com/codelovingcat/Backend-Safety-Kit/releases/tag/v0.1.0-preview.1",
-      "package_url": null
-    }
-  ]
+  "projects": [],
+  "packages": []
 }
