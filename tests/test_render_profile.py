@@ -15,11 +15,9 @@ class RenderProfileTests(unittest.TestCase):
     def setUp(self) -> None:
         self.data = load_profile(ROOT / "data" / "profile.json")
 
-    def test_default_config_hides_projects_packages_and_future_plans(self) -> None:
-        self.assertEqual(self.data["projects"], [])
-        self.assertEqual(self.data["packages"], [])
-        self.assertEqual(self.data["profile"]["plan"], [])
-        self.assertNotIn("nuget_url", self.data["profile"])
+    def test_default_config_contains_priority_projects(self) -> None:
+        names = [item["name"] for item in self.data["projects"]]
+        self.assertEqual(names, ["Conversa", "Backend Safety Kit"])
 
     def test_svg_is_valid_xml_and_has_terminal_accessibility_metadata(self) -> None:
         svg = render_svg(self.data)
@@ -97,64 +95,27 @@ class RenderProfileTests(unittest.TestCase):
         # Keep the original blinking prompt cursor at the end of the animation.
         self.assertIn('values="1;0" calcMode="discrete" dur="1s"', svg)
 
-    def test_checked_in_svg_matches_the_current_profile_config(self) -> None:
-        generated = render_svg(self.data)
-        checked_in = (ROOT / "assets" / "terminal.svg").read_text(encoding="utf-8")
-        self.assertEqual(checked_in, generated)
-
-    def test_svg_shows_intro_interests_and_learning_without_extra_sections(self) -> None:
+    def test_svg_includes_interests_projects_learning_and_plan(self) -> None:
         svg = render_svg(self.data)
         for expected in (
             "Ürem Sancaktutan",
             "Senior Full Stack Developer",
             "Backend engineering",
-            "AI-assisted development workflows",
-            "Reusable backend safety infrastructure",
-        ):
-            self.assertIn(expected, svg)
-        for unwanted in (
             "Conversa",
             "Backend Safety Kit",
-            "BackendSafetyKit",
-            "NuGet",
-            "nuget",
-            "featured",
-            ".plan",
-            "Future Projects",
-            "package information",
-            "selected projects",
-            "and plans",
+            "AI-assisted development workflows",
+            "Move Conversa closer to a usable product",
         ):
-            self.assertNotIn(unwanted.lower(), svg.lower())
+            self.assertIn(expected, svg)
         self.assertNotIn("github-snake-remix", svg.lower())
 
-    def test_generated_markdown_omits_empty_project_and_package_sections(self) -> None:
+    def test_generated_markdown_links_use_configured_urls(self) -> None:
         markdown = render_links_markdown(self.data)
-        self.assertNotIn("Featured projects", markdown)
-        self.assertNotIn("Package links", markdown)
-        self.assertNotIn("NuGet", markdown)
-        self.assertNotIn("Conversa", markdown)
-        self.assertNotIn("Backend Safety Kit", markdown)
-
-    def test_optional_project_and_package_sections_require_configured_entries(self) -> None:
-        data = json.loads(json.dumps(self.data))
-        data["projects"] = [{
-            "name": "Example Project",
-            "description": "A sample app",
-            "url": "https://example.com/project",
-        }]
-        data["packages"] = [{
-            "name": "ExamplePackage",
-            "description": "A sample package",
-            "status": "preview",
-            "source_url": "https://example.com/source",
-            "release_url": None,
-            "package_url": None,
-        }]
-        markdown = render_links_markdown(data)
-        self.assertIn("## Featured projects", markdown)
-        self.assertIn("## Package links", markdown)
-        self.assertIn("https://example.com/project", markdown)
+        self.assertIn("https://github.com/codelovingcat/AI-Powered-Real-Time-Conversation-Assistant", markdown)
+        self.assertIn("https://github.com/codelovingcat/Backend-Safety-Kit", markdown)
+        self.assertIn("NuGet listing pending confirmation", markdown)
+        self.assertIn("## NuGet packages", markdown)
+        self.assertIn("Browse my published packages on [my NuGet profile](https://www.nuget.org/profiles/Urem).", markdown)
 
     def test_dynamic_text_is_xml_escaped(self) -> None:
         data = json.loads(json.dumps(self.data))
@@ -163,13 +124,15 @@ class RenderProfileTests(unittest.TestCase):
         ET.fromstring(svg)
         self.assertIn("&lt;Developer&gt; &amp; Tester", svg)
 
+    def test_invalid_nuget_profile_url_is_rejected(self) -> None:
+        data = json.loads(json.dumps(self.data))
+        data["profile"]["nuget_url"] = "javascript:alert(1)"
+        with self.assertRaisesRegex(ValueError, "profile.nuget_url"):
+            render_svg(data)
+
     def test_invalid_project_url_is_rejected(self) -> None:
         data = json.loads(json.dumps(self.data))
-        data["projects"] = [{
-            "name": "Example Project",
-            "description": "A sample app",
-            "url": "javascript:alert(1)",
-        }]
+        data["projects"][0]["url"] = "javascript:alert(1)"
         with self.assertRaises(ValueError):
             render_svg(data)
 
@@ -179,6 +142,12 @@ class RenderProfileTests(unittest.TestCase):
             path.write_text("{", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Invalid JSON"):
                 load_profile(path)
+
+
+    def test_checked_in_svg_matches_generator(self) -> None:
+        generated = render_svg(self.data)
+        checked_in = (ROOT / "assets" / "terminal.svg").read_text(encoding="utf-8")
+        self.assertEqual(checked_in, generated)
 
 
 if __name__ == "__main__":
