@@ -6,7 +6,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from scripts.render_profile import load_profile, render_links_markdown, render_svg
+from scripts.render_profile import build_rows, load_profile, render_links_markdown, render_svg
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,6 +27,46 @@ class RenderProfileTests(unittest.TestCase):
         self.assertIsNotNone(root.find("{http://www.w3.org/2000/svg}desc"))
         self.assertIn("REC", svg)
         self.assertIn("animate", svg)
+
+    def test_typing_cursor_follows_each_command_and_hides_afterward(self) -> None:
+        svg = render_svg(self.data)
+        root = ET.fromstring(svg)
+        ns = "{http://www.w3.org/2000/svg}"
+        cursor_rects = []
+
+        for rect in root.iter(f"{ns}rect"):
+            children = list(rect)
+            if any(
+                child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "x"
+                for child in children
+            ):
+                cursor_rects.append((rect, children))
+
+        command_count = sum(row["kind"] == "command" for row in build_rows(self.data))
+        self.assertEqual(len(cursor_rects), command_count)
+
+        for rect, children in cursor_rects:
+            self.assertEqual(rect.attrib.get("visibility"), "hidden")
+            self.assertTrue(any(
+                child.tag == f"{ns}set"
+                and child.attrib.get("attributeName") == "visibility"
+                and child.attrib.get("to") == "visible"
+                for child in children
+            ))
+            x_animation = next(
+                child for child in children
+                if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "x"
+            )
+            self.assertEqual(x_animation.attrib.get("from"), "49")
+            self.assertEqual(x_animation.attrib.get("calcMode"), "linear")
+            opacity_animation = next(
+                child for child in children
+                if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "opacity"
+            )
+            self.assertEqual(opacity_animation.attrib.get("repeatCount"), "indefinite")
+
+        # Keep the original blinking prompt cursor at the end of the animation.
+        self.assertIn('values="1;0" calcMode="discrete" dur="1s"', svg)
 
     def test_svg_includes_interests_projects_learning_and_plan(self) -> None:
         svg = render_svg(self.data)
