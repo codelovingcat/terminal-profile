@@ -171,6 +171,19 @@ def render_svg(data: dict[str, Any]) -> str:
                 + _text_element(49, y, text, "#e6edf3", extra=f' aria-label="{escape(text, quote=True)}"')
                 + "</g>"
             )
+            # Keep a blinking green caret synchronized with the text reveal.
+            # It is hidden before typing and again once the command is complete.
+            pieces.append(
+                f'<rect x="49" y="{y - 13}" width="{CHAR_WIDTH:.1f}" height="16" '
+                f'fill="#00ff88" visibility="hidden">'
+                f'<set attributeName="visibility" to="visible" begin="{timeline:.2f}s" '
+                f'dur="{duration:.2f}s" fill="remove"/>'
+                f'<animate attributeName="x" from="49" to="{49 + end_width:.1f}" '
+                f'calcMode="linear" begin="{timeline:.2f}s" dur="{duration:.2f}s" fill="freeze"/>'
+                f'<animate attributeName="opacity" values="1;0" calcMode="discrete" '
+                f'dur="0.8s" begin="{timeline:.2f}s" repeatCount="indefinite"/>'
+                '</rect>'
+            )
             timeline += duration + 0.22
         else:
             if row["kind"] == "name":
