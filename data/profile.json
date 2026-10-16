@@ -15,7 +15,8 @@
     "plan": [
       "Grow Backend Safety Kit and publish its packages",
       "Move Conversa closer to a usable product"
-    ]
+    ],
+    "nuget_url": "https://www.nuget.org/profiles/Urem"
   },
   "projects": [
     {
