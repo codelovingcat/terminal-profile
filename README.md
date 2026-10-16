@@ -2,82 +2,83 @@
 
 **An animated, terminal-style showcase for a developer's GitHub profile.**
 
-Terminal Profile is a small project for turning a GitHub profile README into a more personal developer portfolio. It uses a dark terminal aesthetic, animated command/output lines, and a blinking `REC` indicator to introduce the developer, highlight selected projects and packages, and share what they're learning or planning next.
+Terminal Profile turns a GitHub profile README into a compact personal developer portfolio. The terminal window types out commands, reveals selected projects and package information, shows technical interests, and ends with a blinking cursor and a pulsing `REC` indicator.
 
-The goal is to make a profile feel like a tiny terminal session—not to build a large framework or a full website.
+It is intentionally a small SVG generator—not a full portfolio site or a new platform to maintain.
 
-> **Status:** Project bootstrapped; implementation is planned. The roadmap below describes the intended features, not features that are already available.
+![Animated terminal profile preview](assets/terminal.svg)
 
-## What it is intended to show
+## The current profile concept
 
-A generated terminal panel could look something like this:
+The starter configuration is tailored to **Ürem Sancaktutan · Senior Full Stack Developer**. It highlights areas of interest rather than presenting them as a list of claims about previous employment:
 
-```text
-● ● ●                                      urem@github: ~  ● REC
+- Backend engineering with .NET and ASP.NET Core
+- AI-powered applications and web development
+- Software architecture, microservices, distributed systems, and scalability
 
-$ whoami
-Ürem Sancaktutan
-Senior Full Stack Developer · .NET · React · AI
+The project list is intentionally curated instead of displaying every repository. The first two featured projects are:
 
-$ ls ~/projects --featured
-Conversa             AI-powered conversation assistant
-Backend-Safety-Kit   Reusable backend safety utilities
-github-snake-remix   Animated GitHub contribution snake
-commit-man            Contribution-grid animation
+- **[Conversa](https://github.com/codelovingcat/AI-Powered-Real-Time-Conversation-Assistant)** — an AI-powered conversation assistant built around a .NET modular monolith, with a React web client.
+- **[Backend Safety Kit](https://github.com/codelovingcat/Backend-Safety-Kit)** — reusable safety and diagnostics infrastructure for ASP.NET Core applications.
 
-$ cat ~/.learning
-Exploring AI-assisted development and backend tooling.
+A small package section highlights the Backend Safety Kit preview. Its [GitHub preview release](https://github.com/codelovingcat/Backend-Safety-Kit/releases/tag/v0.1.0-preview.1) is available; a NuGet gallery link will be added when publication is confirmed. The configuration supports that link without pretending that an unpublished package is already downloadable from NuGet.
 
-$ cat ~/.plan
-Build. Experiment. Ship. Repeat.
+The Snake animation is deliberately not part of this terminal showcase. Other projects, including playful game experiments, can be added later when their repository links are confirmed and there is room in the curated list.
 
-$
-```
+## How it works
 
-This is a **concept preview**, not generated output from the project yet. The final layout and content will be configurable.
+1. Update `data/profile.json` with your name, headline, interests, featured projects, package links, learning topics, and upcoming plans.
+2. Run the Python generator. It validates the config and creates `assets/terminal.svg` plus `docs/generated-links.md`.
+3. Run the tests to confirm that the SVG is valid XML, dynamic text is escaped, and configured URLs are safe HTTP(S) links.
+4. GitHub Actions verifies changes on pull requests and can regenerate the output on `main`.
+5. Add the generated SVG to your profile README and keep repository/package links as regular Markdown below the image for reliable navigation.
 
-## Planned features
+The SVG is generated from configuration so the renderer doesn't need code edits every time a project or learning goal changes.
 
-- **Animated terminal SVG** — terminal window, sequentially revealed lines, blinking cursor, and animated `REC` indicator.
-- **Featured repositories** — a curated selection of projects with short descriptions and repository links.
-- **Package showcase** — links to published NuGet packages or other package pages, with source links where useful.
-- **Learning now** — a concise list of topics currently being explored.
-- **Next up / plan** — upcoming projects or goals that can be edited without changing rendering logic.
-- **GitHub Actions** — a repeatable workflow to validate the configuration and regenerate the SVG.
-- **README integration** — a documented snippet for adding the generated panel to a GitHub profile README.
+## Run locally
 
-For reliable navigation on GitHub, repository and package links may be displayed as Markdown links alongside or below the SVG instead of relying on interactive hotspots inside the SVG.
+Requirements: Python 3.12 (the renderer uses only the Python standard library).
 
-## How it is expected to work
+    python scripts/render_profile.py
+    python -m unittest discover -s tests -v
 
-1. Keep profile copy, featured repositories, package URLs, learning topics, and plans in a small configuration file.
-2. Run a generator that validates this data and creates the SVG.
-3. Preview the generated SVG and run tests.
-4. Use GitHub Actions to regenerate the output when needed.
-5. Embed the generated image in a profile README and keep supporting links easy to find.
+Generated files:
 
-The initial implementation should stay small and understandable. No database or hosted web application is required for the first version.
+- `assets/terminal.svg` — terminal panel with the typing timeline, animated `REC` indicator, and blinking cursor.
+- `docs/generated-links.md` — normal Markdown links produced from the same config.
 
-## Roadmap
+To use a different configuration or output path:
 
-- [ ] [#1 — Bootstrap README and define the project scope](https://github.com/codelovingcat/terminal-profile/issues/1)
-- [ ] [#2 — Create the animated terminal SVG template](https://github.com/codelovingcat/terminal-profile/issues/2)
-- [ ] [#3 — Add configurable featured repositories and package links](https://github.com/codelovingcat/terminal-profile/issues/3)
-- [ ] [#4 — Add editable learning and next-plan sections](https://github.com/codelovingcat/terminal-profile/issues/4)
-- [ ] [#5 — Automate SVG generation with GitHub Actions](https://github.com/codelovingcat/terminal-profile/issues/5)
+    python scripts/render_profile.py --config data/profile.json --output assets/terminal.svg --links-output docs/generated-links.md
+
+## Editing the content
+
+- `profile.name`, `headline`, and `tagline` define the intro.
+- `profile.interests` lists the topics you want to highlight.
+- `projects` contains only the featured repositories—not every repo on the account.
+- `packages` supports source, preview-release, and optional NuGet URLs. Keep `package_url` set to `null` until the package page is confirmed live.
+- `profile.learning` and `profile.plan` can be edited without touching rendering code.
+
+See [docs/profile-content.md](docs/profile-content.md) for notes on keeping the content accurate and public-safe.
 
 ## Design principles
 
-- **Small and focused:** a profile asset generator, not a portfolio platform.
-- **Config-first:** content should be editable without rewriting the renderer.
-- **Safe by default:** escape dynamic text before putting it into SVG, validate URLs, and avoid secrets when public GitHub data is enough.
-- **Readable without animation:** keep text meaningful when the SVG is viewed as a static image.
-- **Honest status:** generated output and documentation should not imply that planned features are already implemented.
+- **Small and focused:** one generated profile asset and its supporting links.
+- **Config-first:** profile copy and links are separate from the renderer.
+- **Safe by default:** dynamic text is XML-escaped and URLs are validated before use.
+- **Accessible enough to understand:** the SVG includes a title and description, while real project navigation is provided through Markdown links.
+- **Honest status:** the generated display and docs distinguish preview releases from packages confirmed available on NuGet.
+
+## Roadmap
+
+- [x] Bootstrap the README and define the initial scope — [#1](https://github.com/codelovingcat/terminal-profile/issues/1)
+- [x] Create the animated terminal SVG template — [#2](https://github.com/codelovingcat/terminal-profile/issues/2)
+- [x] Add configurable featured repositories and package links — [#3](https://github.com/codelovingcat/terminal-profile/issues/3)
+- [x] Add editable learning and next-plan sections — [#4](https://github.com/codelovingcat/terminal-profile/issues/4)
+- [x] Automate validation and SVG generation with GitHub Actions — [#5](https://github.com/codelovingcat/terminal-profile/issues/5)
+
+Implementation and review are tracked in the pull request that closes these issues. The issues should be closed automatically when that PR is merged.
 
 ## Inspiration
 
-The terminal animation and compact profile showcase are inspired by the visual approach in [kgarbacinski's GitHub profile](https://github.com/kgarbacinski/kgarbacinski), particularly its [animated terminal SVG](https://github.com/kgarbacinski/kgarbacinski/blob/main/assets/boot.svg). This project will adapt the general idea for a configurable personal project showcase.
-
-## Current status
-
-The repository currently contains the initial scope and roadmap. The first implementation task is the animated SVG template.
+The visual direction is inspired by the animated terminal in [kgarbacinski's GitHub profile](https://github.com/kgarbacinski/kgarbacinski), especially the [boot.svg source](https://github.com/kgarbacinski/kgarbacinski/blob/main/assets/boot.svg). Terminal Profile adapts the general visual idea into a configurable showcase for selected projects, packages, interests, and plans.
