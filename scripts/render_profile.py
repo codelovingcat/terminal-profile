@@ -159,11 +159,19 @@ def render_svg(data: dict[str, Any]) -> str:
         if row["kind"] == "command":
             duration = max(0.38, min(2.3, len(text) * 0.035))
             clip_id = f"command-clip-{index}"
-            end_width = max(CHAR_WIDTH, len(text) * CHAR_WIDTH)
+            # Use the same discrete character steps for both the text reveal and caret.
+            # The textLength set by _text_element makes each character occupy CHAR_WIDTH.
+            character_count = max(1, len(_truncate(text, max_chars=MAX_CHARS)))
+            step_widths = [step * CHAR_WIDTH for step in range(character_count + 1)]
+            width_values = ";".join(f"{width:.1f}" for width in step_widths)
+            cursor_values = ";".join(f"{49 + width:.1f}" for width in step_widths)
+            key_times = ";".join(f"{step / character_count:.5f}" for step in range(character_count + 1))
+            end_width = max(CHAR_WIDTH, character_count * CHAR_WIDTH)
             pieces.append(
                 f'<clipPath id="{clip_id}"><rect x="49" y="{y - 16}" width="0" height="19">'
-                f'<animate attributeName="width" from="0" to="{end_width:.1f}" calcMode="linear" '
-                f'begin="{timeline:.2f}s" dur="{duration:.2f}s" fill="freeze"/></rect></clipPath>'
+                f'<animate attributeName="width" values="{width_values}" keyTimes="{key_times}" '
+                f'calcMode="discrete" begin="{timeline:.2f}s" dur="{duration:.2f}s" '
+                f'fill="freeze"/></rect></clipPath>'
             )
             pieces.append(
                 f'<g opacity="0"><set attributeName="opacity" to="1" '
@@ -175,17 +183,17 @@ def render_svg(data: dict[str, Any]) -> str:
                 + _text_element(49, y, text, "#e6edf3", extra=f' aria-label="{escape(text, quote=True)}"')
                 + "</g>"
             )
-            # Keep a blinking green caret synchronized with the text reveal.
-            # It is hidden before typing and again once the command is complete.
+            # Share the text reveal's exact key times so the caret advances with each character.
+            # Keep it blinking during typing, briefly at the command end, then hide before the next row.
             pieces.append(
                 f'<rect x="49" y="{y - 13}" width="{CHAR_WIDTH:.1f}" height="16" '
                 f'fill="#00ff88" visibility="hidden">'
                 f'<set attributeName="visibility" to="visible" begin="{timeline:.2f}s" '
-                f'dur="{duration:.2f}s" fill="remove"/>'
-                f'<animate attributeName="x" from="49" to="{49 + end_width:.1f}" '
-                f'calcMode="linear" begin="{timeline:.2f}s" dur="{duration:.2f}s" fill="freeze"/>'
+                f'dur="{duration + 0.12:.2f}s" fill="remove"/>'
+                f'<animate attributeName="x" values="{cursor_values}" keyTimes="{key_times}" '
+                f'calcMode="discrete" begin="{timeline:.2f}s" dur="{duration:.2f}s" fill="freeze"/>'
                 f'<animate attributeName="opacity" values="1;0" calcMode="discrete" '
-                f'dur="0.8s" begin="{timeline:.2f}s" repeatCount="indefinite"/>'
+                f'dur="0.3s" begin="{timeline:.2f}s" repeatCount="indefinite"/>'
                 '</rect>'
             )
             timeline += duration + 0.22

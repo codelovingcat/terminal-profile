@@ -28,24 +28,40 @@ class RenderProfileTests(unittest.TestCase):
         self.assertIn("REC", svg)
         self.assertIn("animate", svg)
 
-    def test_typing_cursor_follows_each_command_and_hides_afterward(self) -> None:
+    def test_typing_cursor_moves_with_each_revealed_character(self) -> None:
         svg = render_svg(self.data)
         root = ET.fromstring(svg)
         ns = "{http://www.w3.org/2000/svg}"
-        cursor_rects = []
+        clip_animations: dict[float, object] = {}
 
+        for clip_path in root.iter(f"{ns}clipPath"):
+            clip_rect = clip_path.find(f"{ns}rect")
+            if clip_rect is None:
+                continue
+            animation = next(
+                (child for child in clip_rect
+                 if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "width"),
+                None,
+            )
+            if animation is not None:
+                clip_animations[float(clip_rect.attrib["y"])] = animation
+
+        cursor_rects = []
         for rect in root.iter(f"{ns}rect"):
             children = list(rect)
-            if any(
-                child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "x"
-                for child in children
-            ):
-                cursor_rects.append((rect, children))
+            x_animation = next(
+                (child for child in children
+                 if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "x"),
+                None,
+            )
+            if x_animation is not None:
+                cursor_rects.append((rect, children, x_animation))
 
         command_count = sum(row["kind"] == "command" for row in build_rows(self.data))
         self.assertEqual(len(cursor_rects), command_count)
+        self.assertEqual(len(clip_animations), command_count)
 
-        for rect, children in cursor_rects:
+        for rect, children, x_animation in cursor_rects:
             self.assertEqual(rect.attrib.get("visibility"), "hidden")
             self.assertTrue(any(
                 child.tag == f"{ns}set"
@@ -53,17 +69,28 @@ class RenderProfileTests(unittest.TestCase):
                 and child.attrib.get("to") == "visible"
                 for child in children
             ))
-            x_animation = next(
-                child for child in children
-                if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "x"
-            )
-            self.assertEqual(x_animation.attrib.get("from"), "49")
-            self.assertEqual(x_animation.attrib.get("calcMode"), "linear")
-            opacity_animation = next(
-                child for child in children
-                if child.tag == f"{ns}animate" and child.attrib.get("attributeName") == "opacity"
-            )
-            self.assertEqual(opacity_animation.attrib.get("repeatCount"), "indefinite")
+            self.assertEqual(x_animation.attrib.get("calcMode"), "discrete")
+            self.assertIsNone(x_animation.attrib.get("from"))
+            self.assertTrue(any(
+                child.tag == f"{ns}animate"
+                and child.attrib.get("attributeName") == "opacity"
+                and child.attrib.get("repeatCount") == "indefinite"
+                and child.attrib.get("dur") == "0.3s"
+                for child in children
+            ))
+
+            clip_y = float(rect.attrib["y"]) - 3
+            width_animation = clip_animations[clip_y]
+            self.assertEqual(width_animation.attrib.get("calcMode"), "discrete")
+            self.assertEqual(x_animation.attrib.get("keyTimes"), width_animation.attrib.get("keyTimes"))
+            self.assertEqual(x_animation.attrib.get("begin"), width_animation.attrib.get("begin"))
+            self.assertEqual(x_animation.attrib.get("dur"), width_animation.attrib.get("dur"))
+
+            widths = [float(value) for value in width_animation.attrib["values"].split(";")]
+            positions = [float(value) for value in x_animation.attrib["values"].split(";")]
+            self.assertEqual(len(positions), len(widths))
+            for width, position in zip(widths, positions):
+                self.assertAlmostEqual(position, 49 + width, places=3)
 
         # Keep the original blinking prompt cursor at the end of the animation.
         self.assertIn('values="1;0" calcMode="discrete" dur="1s"', svg)
